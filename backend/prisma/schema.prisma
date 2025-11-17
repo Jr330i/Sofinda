@@ -1,0 +1,98 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PropertyType {
+  RESIDENTIAL
+  COMMERCIAL
+}
+
+enum UnitType {
+  STUDIO
+  ONE_BR
+  TWO_BR
+  THREE_BR
+  FOUR_BR
+  COMMERCIAL
+}
+
+enum UnitStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+  RESERVED
+}
+
+enum DocumentCategory {
+  LEGAL
+  PHOTOS
+  MAINTENANCE
+  OTHER
+}
+
+model Property {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String      @db.VarChar(255)
+  address     String
+  city        String      @db.VarChar(100)
+  state       String      @db.VarChar(50)
+  zipCode     String?     @map("zip_code") @db.VarChar(20)
+  propertyType PropertyType @map("property_type")
+  totalUnits  Int         @default(0) @map("total_units")
+  description String?
+  managerId   String      @map("manager_id") @db.Uuid
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  
+  // Relations
+  units       Unit[]
+  documents   PropertyDocument[]
+  
+  @@map("properties")
+}
+
+model Unit {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId      String     @map("property_id") @db.Uuid
+  unitNumber      String     @map("unit_number") @db.VarChar(50)
+  unitType        UnitType   @map("unit_type")
+  rentAmount      Decimal    @map("rent_amount") @db.Decimal(10, 2)
+  squareFootage   Int?       @map("square_footage")
+  status          UnitStatus @default(AVAILABLE)
+  description     String?
+  currentTenantId String?    @map("current_tenant_id") @db.Uuid
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  
+  // Relations
+  property        Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  @@unique([propertyId, unitNumber])
+  @@map("units")
+}
+
+model PropertyDocument {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId   String           @map("property_id") @db.Uuid
+  fileName     String           @map("file_name")
+  originalName String           @map("original_name")
+  fileSize     Int              @map("file_size")
+  mimeType     String           @map("mime_type")
+  category     DocumentCategory
+  uploadedAt   DateTime         @default(now()) @map("uploaded_at")
+  uploadedBy   String           @map("uploaded_by") @db.Uuid
+  storageUrl   String           @map("storage_url")
+  
+  // Relations
+  property     Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  @@map("property_documents")
+}
